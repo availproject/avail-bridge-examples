@@ -1,0 +1,49 @@
+[package]
+name = "avail_bridge_tools"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+subxt = { version = "0.34.0", features = ["substrate-compat"] }
+avail-subxt = { git = "https://github.com/availproject/avail.git", branch = "main" }
+avail-core = { git = "https://github.com/availproject/avail-core", tag = "node-v2230-rc2" }
+tokio = { version = "1.35", features = ["full"] }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+    "full",
+    "bit-vec",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.115"
+sp-core = { version = "21.0.0" }
+hex = "0.4"
+hex-literal = "0.3.4"
+anyhow = "1.0.79"
+reqwest = { version = "0.11.24", features = ["json"] }
+ringbuffer = { version = "0.15.0", features = ["alloc"] }
+secp256k1 = "0.28"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["json", "env-filter"] }
+chrono = "0.4.34"
+confy = "0.6"
+tokio-test = "0.4"
+alloy-sol-types = { version = "0.7.4", features = ["json"] }
+alloy-sol-macro = { version = "0.7.4", features = ["json"] }
+alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy-contract = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy-provider = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+# alloy-primitives = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy-signer = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+# Dependency `subxt` uses it's own 'version' of sp-core so we need to patch it :)
+[patch.crates-io]
+sp-core = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
+sp-io = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
+sp-runtime = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
+sp-std = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
+
+[profile.release]
+panic = 'abort'
