@@ -23,8 +23,10 @@ After that, you can execute
 In folder deno typescript examples can be found:
 
 * `attestation.ts` - contains an example how a DA transaction can be attested on Ethereum.
-* `avail_eth.ts` - demonstrates sending AVAIL tokens from Avail to Ethereum.
-* `eth_avail.ts` - demonstrates sending AVAIL tokens from Ethereum to Avail.
+* `avail_eth_token.ts` - demonstrates sending AVAIL tokens from Avail to Ethereum.
+* `eth_avail_token.ts` - demonstrates sending AVAIL tokens from Ethereum to Avail. 
+* `eth_avail_amb.ts` - demonstrates sending message from Ethereum to Avail.
+* `eth_avail_amb.ts` - demonstrates sending message from Ethereum to Avail.
 
 To run typescript examples:
 

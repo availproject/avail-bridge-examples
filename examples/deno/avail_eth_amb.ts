@@ -12,8 +12,9 @@ const BRIDGE_ADDRESS = "0x967F7DdC4ec508462231849AE81eeaa68Ad01389"; // deployed
 const BRIDGE_API_URL = "https://turing-bridge-api.fra.avail.so"; // bridge api url
 const ETH_PROVIDER_URL = "https://ethereum-sepolia.publicnode.com"; // eth provider url
 const WALLET_SIGNER_KEY = "ETHEREUM_WALLET_SIGNER_KEY";
-const TOKEN_TO_SEND = new BN("1000000000000000000");
-const TO = "ETHEREUM_TO_ADDRESS"; // eth address as 32 bytes
+const TO = "ETHEREUM_TO_ADDRESS"; // eth address as 32 bytes of deployed contract address
+const DATA_TO_SEND = 0x1234;
+
 const AVAIL_API = await ApiPromise.create({
     provider: new WsProvider(AVAIL_RPC),
     rpc: API_RPC,
@@ -24,7 +25,7 @@ const ACCOUNT = new Keyring({type: "sr25519"}).addFromUri(SURI);
 
 /**
  *  ProofData represents a response from the api that holds proof for
- *  the blob verification with a message that was sent.
+ *  the verification with a message that was sent.
  */
 class ProofData {
     dataRootProof: Array<string>
@@ -39,7 +40,7 @@ class ProofData {
 }
 
 /**
- * Message represent token sent information.
+ * Message represent message sent information.
  */
 class Message {
     destinationDomain: number
@@ -53,16 +54,13 @@ class Message {
 /**
  * Submitting message extrinsic call.
  */
-async function sendToken() {
+async function sendMessage() {
     return await new Promise<ISubmittableResult>((res) => {
         console.log("Sending transaction...")
         AVAIL_API.tx.vector.sendMessage({
-                FungibleToken: {
-                    assetId: "0x0000000000000000000000000000000000000000000000000000000000000000",
-                    amount: TOKEN_TO_SEND
-                }
+                ArbitraryMessage: DATA_TO_SEND
             },
-            TO, // address to send tokens
+            TO, // address to send message, it is a contract message address on Ethereum
             2 // eth domain
         ).signAndSend(ACCOUNT, {nonce: -1}, (result: ISubmittableResult) => {
             console.log(`Tx status: ${result.status}`)
@@ -81,8 +79,7 @@ async function sendToken() {
     });
 }
 
-
-let result = await sendToken();
+let result = await sendMessage();
 if (result.isFinalized) {
     console.log(`Message transaction in finalized block: ${result.blockNumber}, transaction index: ${result.txIndex}`);
 } else {
@@ -92,7 +89,7 @@ if (result.isFinalized) {
 }
 
 // wait until the chain head on the Ethereum network is updated with the block range
-// in which the Avail token bridge transaction is included.
+// in which the Avail message bridge transaction is included.
 while (true) {
     let getHeadRsp = await fetch(BRIDGE_API_URL + "/avl/head");
     if (getHeadRsp.status != 200) {
@@ -118,29 +115,14 @@ while (true) {
         const signer = new ethers.Wallet(WALLET_SIGNER_KEY, provider);
 
         const contractInstance = new ethers.Contract(BRIDGE_ADDRESS, ABI, signer);
-        const receipt = await contractInstance.receiveAVAIL(
+        const receipt = await contractInstance.receiveMessage(
             [
-                "0x02", // token transfer type
+                "0x01", // AMB message type
                 proof.message.from,
                 proof.message.to,
                 proof.message.originDomain,
                 proof.message.destinationDomain,
-                encodeAbiParameters(
-                    [
-                        {
-                            name: "assetId",
-                            type: "bytes32",
-                        },
-                        {
-                            name: "amount",
-                            type: "uint256",
-                        },
-                    ],
-                    [
-                        proof.message.message.fungibleToken.asset_id,
-                        proof.message.message.fungibleToken.amount,
-                    ])
-                ,
+                proof.message.message.arbitraryMessage,
                 proof.message.id
             ], [
                 proof.dataRootProof,
@@ -154,7 +136,7 @@ while (true) {
         );
         const received = await receipt.wait();
         console.log(received)
-        console.log(`Receive avail in block number: ${received.blockNumber}`)
+        console.log(`Receive message in block number: ${received.blockNumber}`)
         break;
     }
 
