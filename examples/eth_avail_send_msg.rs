@@ -1,5 +1,5 @@
 use alloy::primitives::Address;
-use alloy_network::EthereumSigner;
+use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
@@ -35,12 +35,12 @@ async fn main() -> Result<()> {
 
     let recipient = sender.0.public().0;
 
-    let ethereum_signer = ethereum_secret.parse::<alloy_signer_wallet::LocalWallet>()?;
+    let ethereum_signer = ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
 
     let sender = eth_seed_to_address(ethereum_secret);
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(EthereumSigner::from(ethereum_signer))
+        .wallet(EthereumWallet::from(ethereum_signer))
         .on_http(Url::parse(ethereum_url)?);
 
     let contract_addr: Address = contract_address.parse()?;

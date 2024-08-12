@@ -48,7 +48,9 @@ pub fn enc_amount_to_value(amount: u128) -> Vec<u8> {
 }
 
 pub fn eth_seed_to_address(seed: &str) -> Address {
-    let ethereum_signer = seed.parse::<alloy_signer_wallet::LocalWallet>().unwrap();
+    let ethereum_signer = seed
+        .parse::<alloy_signer_local::PrivateKeySigner>()
+        .unwrap();
     ethereum_signer.address()
 }
 

@@ -31,13 +31,13 @@ confy = "0.6"
 tokio-test = "0.4"
 alloy-sol-types = { version = "0.7.4", features = ["json"] }
 alloy-sol-macro = { version = "0.7.4", features = ["json"] }
-alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-alloy-contract = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-alloy-provider = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-alloy-network = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-# alloy-primitives = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-alloy-signer = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
-alloy-signer-wallet = { git = "https://github.com/alloy-rs/alloy", version = "0.1.0" }
+alloy = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+alloy-contract = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+alloy-provider = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+alloy-network = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+# alloy-primitives = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+alloy-signer = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
+alloy-signer-local = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
 # Dependency `subxt` uses it's own 'version' of sp-core so we need to patch it :)
 [patch.crates-io]
 sp-core = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }

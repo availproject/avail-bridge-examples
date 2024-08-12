@@ -1,4 +1,4 @@
-use alloy_network::EthereumSigner;
+use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use anyhow::{Context, Result};
 use avail_bridge_tools::{
@@ -77,10 +77,10 @@ async fn main() -> Result<()> {
     let proof: BridgeApiMerkleProof = reqwest::get(url).await.unwrap().json().await.unwrap();
 
     println!("Proof: {proof:?}");
-    let signer = ethereum_secret.parse::<alloy_signer_wallet::LocalWallet>()?;
+    let signer = ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .signer(EthereumSigner::from(signer))
+        .wallet(EthereumWallet::from(signer))
         .on_http(Url::parse(ethereum_url)?);
 
     let contract_address = contract_address.parse()?;
