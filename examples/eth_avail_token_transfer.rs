@@ -80,32 +80,23 @@ async fn main() -> Result<()> {
     };
 
     let (avail_stored_block_hash, avail_stored_slot) = loop {
-        let ethereum_slot_info: EthereumSlotInfo =
-            reqwest::get(format!("{}/eth/head", bridge_api_url))
+        let ethereum_head_info: EthereumHeadInfo =
+            reqwest::get(format!("{}/v1/eth/head", bridge_api_url))
                 .await
                 .unwrap()
                 .json()
                 .await?;
-        println!("New slot: {ethereum_slot_info:?}");
-        let block_info: BlockInfo = reqwest::get(format!(
-            "{}/beacon/slot/{}",
-            bridge_api_url, ethereum_slot_info.slot
-        ))
-        .await
-        .unwrap()
-        .json()
-        .await?;
-        println!("Slot to num: {}", block_info.block_number);
-        if block_info.block_number >= block_number {
+        println!("New slot: {ethereum_head_info:?}");
+        if ethereum_head_info.block_number >= block_number {
             println!("Stored eth head is in range!");
-            break (block_info.block_hash, ethereum_slot_info.slot);
+            break (ethereum_head_info.block_hash, ethereum_head_info.slot);
         }
 
         tokio::time::sleep(Duration::from_secs(60)).await;
     };
 
     let account_storage_proof: AccountStorageProof = reqwest::get(format!(
-        "{}/avl/proof/{:?}/{}",
+        "{}/v1/avl/proof/{:?}/{}",
         bridge_api_url, avail_stored_block_hash, message_id
     ))
     .await
@@ -156,15 +147,10 @@ async fn main() -> Result<()> {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct BlockInfo {
-    block_number: u64,
-    block_hash: H256,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct EthereumSlotInfo {
+struct EthereumHeadInfo {
     pub slot: u64,
+    pub block_number: u64,
+    pub block_hash: H256,
     pub _timestamp: u64,
     pub _timestamp_diff: u64,
 }

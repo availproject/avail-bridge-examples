@@ -91,7 +91,7 @@ if (result.isFinalized) {
 // wait until the chain head on the Ethereum network is updated with the block range
 // in which the Avail message bridge transaction is included.
 while (true) {
-    let getHeadRsp = await fetch(BRIDGE_API_URL + "/avl/head");
+    let getHeadRsp = await fetch(BRIDGE_API_URL + "/v1/avl/head");
     if (getHeadRsp.status != 200) {
         console.log("Something went wrong fetching the head.");
         break;
@@ -103,7 +103,7 @@ while (true) {
     if (lastCommittedBlock >= txBlockNumber) {
         console.log("Fetching the proof...")
         const proofResponse =
-            await fetch(BRIDGE_API_URL + "/eth/proof/" + result.status.asFinalized + "?index=" + result.txIndex);
+            await fetch(BRIDGE_API_URL + "/v1/eth/proof/" + result.status.asFinalized + "?index=" + result.txIndex);
         if (proofResponse.status != 200) {
             console.log("Something went wrong fetching the proof.")
             console.log(proofResponse)

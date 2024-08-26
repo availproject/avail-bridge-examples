@@ -69,23 +69,19 @@ let messageId = receipt.events[0].args[2].toNumber();
 console.log(`Transaction sent ${receipt.blockNumber} and message id ${messageId} `)
 
 while (true) {
-    let getHeadRsp = await fetch(BRIDGE_API_URL + "/eth/head");
+    let getHeadRsp = await fetch(BRIDGE_API_URL + "/v1/eth/head");
     if (getHeadRsp.status != 200) {
         console.log("Something went wrong fetching the head.");
         break;
     }
     let headRsp = await getHeadRsp.json();
     let txSendBlockNumber: number = receipt.blockNumber;
-    let slot: number = headRsp.slot;
-    // map slot number to block number
-    let slotMappingRsp = await fetch(BRIDGE_API_URL + "/beacon/slot/" + slot);
-    let mappingResponse = await slotMappingRsp.json();
-    console.log(`Block inclusion number ${txSendBlockNumber}, head block number ${mappingResponse.blockNumber}`);
+    console.log(`Block inclusion number ${txSendBlockNumber}, head block number ${headRsp.blockNumber}`);
     // check if we can claim
     // if the head on a pallet is updated with a block number >= block number when tx was sent
-    if (mappingResponse.blockNumber >= txSendBlockNumber) {
+    if (headRsp.blockNumber >= txSendBlockNumber) {
         console.log("Fetching the blob proof.")
-        const proofResponse = await fetch(BRIDGE_API_URL + "/avl/proof/" + mappingResponse.blockHash + "/" + messageId);
+        const proofResponse = await fetch(BRIDGE_API_URL + "/v1/avl/proof/" + headRsp.blockHash + "/" + messageId);
         if (proofResponse.status != 200) {
             console.log("Something went wrong fetching the proof.")
             console.log(proofResponse)

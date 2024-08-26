@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     println!("Fungible token msg included in block: {block_num}, hash: {block_hash:?}, index:{extrinsic_index}");
 
     loop {
-        let avail_head_info: AvailHeadInfo = reqwest::get(format!("{}/avl/head", bridge_api_url))
+        let avail_head_info: AvailHeadInfo = reqwest::get(format!("{}/v1/avl/head", bridge_api_url))
             .await
             .unwrap()
             .json()
@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
     }
 
     let url: String = format!(
-        "{}/eth/proof/{:?}?index={}",
+        "{}/v1/eth/proof/{:?}?index={}",
         bridge_api_url, block_hash, extrinsic_index
     );
     println!("Proof url: {url}");
