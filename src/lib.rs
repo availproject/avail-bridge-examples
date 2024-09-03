@@ -134,4 +134,5 @@ pub struct Config {
     pub message_data: String,
     pub amount_to_send: u64,
     pub recipient: String,
+    pub receive_message_contract_address: String,
 }
