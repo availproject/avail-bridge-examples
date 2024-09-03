@@ -6,9 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-subxt = { version = "0.34.0", features = ["substrate-compat"] }
-avail-subxt = { git = "https://github.com/availproject/avail.git", branch = "main" }
-avail-core = { git = "https://github.com/availproject/avail-core", tag = "node-v2230-rc2" }
+avail-rust = { git = "https://github.com/availproject/avail" }
 tokio = { version = "1.35", features = ["full"] }
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
@@ -16,7 +14,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "bit-vec",
 ] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.115"
+serde_json = "1.0.127"
 sp-core = { version = "21.0.0" }
 hex = "0.4"
 hex-literal = "0.3.4"
@@ -38,12 +36,9 @@ alloy-network = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
 # alloy-primitives = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
 alloy-signer = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
 alloy-signer-local = { git = "https://github.com/alloy-rs/alloy", version = "0.2.1" }
-# Dependency `subxt` uses it's own 'version' of sp-core so we need to patch it :)
-[patch.crates-io]
-sp-core = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
-sp-io = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
-sp-runtime = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
-sp-std = { git = "https://github.com/availproject/polkadot-sdk.git", tag = "polkadot-1.7.1-patch-2" }
+toml = "0.8.19"
+
+
 
 [profile.release]
 panic = 'abort'
