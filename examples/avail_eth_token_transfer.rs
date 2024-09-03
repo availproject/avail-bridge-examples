@@ -1,61 +1,78 @@
+use std::fs;
+use std::str::FromStr;
 use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
-use anyhow::{Context, Result};
-use avail_bridge_tools::{
-    address_to_h256, eth_seed_to_address, AvailBridgeContract, BridgeApiMerkleProof,
-};
-use avail_subxt::api::runtime_types::avail_core::data_proof::message::Message as AvailMessage;
-use avail_subxt::AvailConfig;
+use anyhow::{Result};
+use avail_bridge_tools::{AvailBridgeContract, BridgeApiMerkleProof, Config};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use sp_core::H256;
 use std::time::Duration;
-use subxt::ext::sp_core::sr25519::Pair;
-use subxt::ext::sp_core::Pair as PairT;
-use subxt::tx::PairSigner;
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, H256, SDK};
+use avail_rust::avail::vector::calls::types::send_message::Message;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let avail_rpc_url = "wss://rpc-hex-devnet.avail.tools:443/ws";
-    let avail_sender_mnemonic =
-        "bottom drive obey lake curtain smoke basket hold race lonely fit walk//Alice";
-    let ethereum_secret = "YOUR_SECRET_SEED";
-    let bridge_api_url = "https://hex-bridge-api.sandbox.avail.tools";
-    let ethereum_url = "https://ethereum-sepolia.publicnode.com";
-    let contract_address = "1369A4C9391cF90D393b40fAeAD521b0F7019dc5";
+    let content = fs::read_to_string("./config.toml").expect("Read config.toml");
+    let config = toml::from_str::<Config>(&content).unwrap();
 
-    let client = avail_subxt::AvailClient::new(avail_rpc_url).await.unwrap();
+    println!("Using config:\n{:#?}", config);
 
-    let sender = PairT::from_string_with_seed(avail_sender_mnemonic, None).unwrap();
-    let signer = PairSigner::<AvailConfig, Pair>::new(sender.0);
+    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
+    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
+    let account = Keypair::from_uri(&secret_uri).unwrap();
 
-    let tx = avail_subxt::api::tx().vector().send_message(
-        AvailMessage::FungibleToken {
-            asset_id: H256::zero(),
-            amount: 100000,
-        },
-        address_to_h256(eth_seed_to_address(ethereum_secret)),
-        2,
+    // Ethereum domain
+    let domain = 2u32;
+    // Recipient address on the Ethereum network
+    let recipient = config.recipient.parse()?;
+
+    // Fungible token message to send
+    let message = Message::FungibleToken {
+        asset_id: H256::zero(),
+        amount: config.amount_to_send as u128,
+    };
+
+    let da_call = avail::tx().vector().send_message(
+        message,
+        recipient,
+        domain,
     );
-
-    let e_event = client
+    let params = AvailExtrinsicParamsBuilder::new().build();
+    let maybe_tx_progress = sdk
+        .api
         .tx()
-        .sign_and_submit_then_watch_default(&tx, &signer)
-        .await
-        .context("Submission failed")
-        .unwrap()
-        .wait_for_finalized_success()
-        .await
-        .context("Waiting for success failed")
-        .unwrap();
-    let block_hash = e_event.block_hash();
-    let extrinsic_index = e_event.extrinsic_index();
+        .sign_and_submit_then_watch(&da_call, &account, params)
+        .await;
 
-    let block_num = client.blocks().at(block_hash).await.unwrap().number();
-    println!("Fungible token msg included in block: {block_num}, hash: {block_hash:?}, index:{extrinsic_index}");
+    let transaction = sdk
+        .util
+        .progress_transaction(maybe_tx_progress, WaitFor::BlockFinalization)
+        .await;
+
+    let tx_in_block = match transaction {
+        Ok(tx_in_block) => tx_in_block,
+        Err(message) => {
+            panic!("Error: {}", message);
+        }
+    };
+
+    println!("Finalized block hash: {:?}", tx_in_block.block_hash());
+    let events = tx_in_block.wait_for_success().await.unwrap();
+    println!("Transaction result: {:?}", events);
+
+    let block_hash = tx_in_block.block_hash();
+    let extrinsic_index = events.extrinsic_index();
+
+    let block = sdk
+        .rpc
+        .chain
+        .get_block(None)
+        .await.unwrap();
+
+    let block_num = block.block.header.number;
 
     loop {
-        let avail_head_info: AvailHeadInfo = reqwest::get(format!("{}/avl/head", bridge_api_url))
+        let avail_head_info: AvailHeadInfo = reqwest::get(format!("{}/avl/head", config.bridge_api_url))
             .await
             .unwrap()
             .json()
@@ -71,19 +88,19 @@ async fn main() -> Result<()> {
 
     let url: String = format!(
         "{}/eth/proof/{:?}?index={}",
-        bridge_api_url, block_hash, extrinsic_index
+        config.bridge_api_url, block_hash, extrinsic_index
     );
     println!("Proof url: {url}");
     let proof: BridgeApiMerkleProof = reqwest::get(url).await.unwrap().json().await.unwrap();
 
     println!("Proof: {proof:?}");
-    let signer = ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
+    let signer = config.ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .wallet(EthereumWallet::from(signer))
-        .on_http(Url::parse(ethereum_url)?);
+        .on_http(Url::parse(config.ethereum_url.as_str())?);
 
-    let contract_address = contract_address.parse()?;
+    let contract_address = config.contract_address.parse()?;
 
     let contract = AvailBridgeContract::new(contract_address, &provider);
 

@@ -121,3 +121,17 @@ impl From<BridgeApiMerkleProof> for AvailBridgeContract::MerkleProofInput {
         }
     }
 }
+
+
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub avail_rpc_url: String,
+    pub avail_sender_mnemonic: String,
+    pub ethereum_secret: String,
+    pub bridge_api_url: String,
+    pub ethereum_url: String,
+    pub contract_address: String,
+    pub message_data: String,
+    pub amount_to_send: u64,
+    pub recipient: String,
+}

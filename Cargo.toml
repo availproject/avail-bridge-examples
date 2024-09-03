@@ -39,6 +39,5 @@ alloy-signer-local = { git = "https://github.com/alloy-rs/alloy", version = "0.2
 toml = "0.8.19"
 
 
-
 [profile.release]
 panic = 'abort'

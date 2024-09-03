@@ -4,15 +4,10 @@ use alloy_provider::ProviderBuilder;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
 use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address};
-use avail_core::data_proof::AddressedMessage;
-use avail_subxt::{AvailConfig, BoundedVec};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use sp_core::H256;
 use std::time::Duration;
-use subxt::ext::sp_core::sr25519::Pair;
-use subxt::ext::sp_core::Pair as PairT;
-use subxt::tx::PairSigner;
 
 sol!(
     #[sol(rpc)]

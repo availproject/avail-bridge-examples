@@ -1,7 +1,9 @@
 avail_rpc_url="wss://rpc-hex-devnet.avail.tools:443/ws"
 avail_sender_mnemonic="//Bob"
-ethereum_secret="ETH_SECRET_KEY"
+ethereum_secret="ETH_PRIVATE_KEY"
 bridge_api_url="https://hex-bridge-api.sandbox.avail.tools"
 ethereum_url="https://ethereum-sepolia.publicnode.com"
 contract_address="1369A4C9391cF90D393b40fAeAD521b0F7019dc5"
 message_data="Example data"
+amount_to_send=1000000
+recipient="AfF84d35f9c784cE972A7Ff3e3E243E5eb6EF37D000000000000000000000000"

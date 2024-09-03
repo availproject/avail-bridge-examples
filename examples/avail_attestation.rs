@@ -3,23 +3,12 @@ use std::str::FromStr;
 use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use anyhow::{Result};
-use avail_bridge_tools::{AvailBridgeContract, BridgeApiMerkleProof};
+use avail_bridge_tools::{AvailBridgeContract, BridgeApiMerkleProof, Config};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use avail_rust::{avail, AvailExtrinsicParamsBuilder, Data, Keypair, SecretUri, WaitFor, SDK};
 
-
-#[derive(Debug, Deserialize)]
-struct Config {
-    avail_rpc_url: String,
-    avail_sender_mnemonic: String,
-    ethereum_secret: String,
-    bridge_api_url: String,
-    ethereum_url: String,
-    contract_address: String,
-    message_data: String,
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
