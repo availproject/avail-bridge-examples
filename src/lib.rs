@@ -3,10 +3,12 @@ use alloy::primitives::Bytes;
 use alloy::primitives::FixedBytes;
 use alloy::primitives::Uint;
 use alloy_sol_types::sol;
-use avail_rust::avail_core::data_proof::{AddressedMessage, BoundedData};
+use avail_rust::avail::runtime_types::avail_core::data_proof::message::AddressedMessage;
+use avail_rust::avail::runtime_types::avail_core::data_proof::message::Message as AvailBridgeMessage;
+use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
+use avail_rust::avail_core::data_proof::AddressedMessage as CoreAddressedMessage;
 use serde::Deserialize;
 use sp_core::H256;
-use avail_rust::avail_core::data_proof::message::Message as AvailBridgeMessage;
 
 pub const ABI_JSON: &[u8] = include_bytes!("availbridge.json");
 
@@ -16,10 +18,10 @@ sol!(
     "src/availbridge.json"
 );
 
-pub fn convert_addressed_message(message: AddressedMessage) -> AddressedMessage {
+pub fn convert_addressed_message(message: CoreAddressedMessage) -> AddressedMessage {
     let msg = match message.message {
         avail_rust::avail_core::data_proof::Message::ArbitraryMessage(data) => {
-            AvailBridgeMessage::ArbitraryMessage(BoundedData::truncate_from(data.to_vec()))
+            AvailBridgeMessage::ArbitraryMessage(BoundedVec(data.to_vec()))
         }
         avail_rust::avail_core::data_proof::Message::FungibleToken { asset_id, amount } => {
             AvailBridgeMessage::FungibleToken { asset_id, amount }
@@ -71,7 +73,7 @@ pub struct BridgeApiMerkleProof {
     pub leaf: H256,
     pub leaf_index: u32,
     pub leaf_proof: Vec<H256>,
-    pub message: Option<AddressedMessage>,
+    pub message: Option<CoreAddressedMessage>,
     pub range_hash: H256,
 }
 impl TryFrom<BridgeApiMerkleProof> for AvailBridgeContract::Message {
@@ -81,7 +83,9 @@ impl TryFrom<BridgeApiMerkleProof> for AvailBridgeContract::Message {
             return Err("Message not found");
         };
         let (msg_type, data) = match message.message {
-            avail_rust::avail_core::data_proof::Message::ArbitraryMessage(data) => (1u8, data.to_vec()),
+            avail_rust::avail_core::data_proof::Message::ArbitraryMessage(data) => {
+                (1u8, data.to_vec())
+            }
             avail_rust::avail_core::data_proof::Message::FungibleToken {
                 asset_id: _,
                 amount,
@@ -122,8 +126,7 @@ impl From<BridgeApiMerkleProof> for AvailBridgeContract::MerkleProofInput {
     }
 }
 
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub avail_rpc_url: String,
     pub avail_sender_mnemonic: String,

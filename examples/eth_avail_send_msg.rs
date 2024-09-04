@@ -1,20 +1,25 @@
-use std::fs;
-use std::str::FromStr;
 use alloy::primitives::Address;
 use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
 use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address, Config};
+use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
+use avail_rust::avail_core::data_proof::AddressedMessage;
+use avail_rust::sp_core::sr25519::Pair;
+use avail_rust::sp_core::Pair as PairT;
+use avail_rust::subxt::runtime_api::Payload;
+use avail_rust::subxt_signer::{
+    bip39::{Language, Mnemonic},
+    SecretString, SecretUri,
+};
+use avail_rust::{avail, AvailConfig, AvailExtrinsicParamsBuilder, Keypair, WaitFor, SDK};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use sp_core::H256;
+use std::fs;
+use std::str::FromStr;
 use std::time::Duration;
-use avail_rust::{avail, AvailConfig, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, SDK};
-use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
-use avail_rust::avail_core::data_proof::BoundedData;
-use avail_rust::sp_core::Pair as PairT;
-use avail_rust::sp_core::sr25519::Pair;
 
 sol!(
     #[sol(rpc)]
@@ -27,16 +32,14 @@ async fn main() -> Result<()> {
     let content = fs::read_to_string("./config.toml").expect("Read config.toml");
     let config = toml::from_str::<Config>(&content).unwrap();
 
-    let sender = PairT::from_string_with_seed(config.avail_sender_mnemonic.as_str(), None).unwrap();
-    let avail_signer = PairSigner::<AvailConfig, Pair>::new(sender.clone().0);
-
     let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
     let account = Keypair::from_uri(&secret_uri).unwrap();
 
+    let recipient = account.public_key().0;
 
-    let recipient = sender.0.public().0;
-
-    let ethereum_signer = config.ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
+    let ethereum_signer = config
+        .ethereum_secret
+        .parse::<alloy_signer_local::PrivateKeySigner>()?;
 
     let sender = eth_seed_to_address(config.ethereum_secret.as_str());
     let provider = ProviderBuilder::new()
@@ -48,7 +51,7 @@ async fn main() -> Result<()> {
 
     let contract = AvailBridgeContract::new(contract_addr, &provider);
 
-    let call = contract.sendMessage(recipient.into(), config.message_data.into());
+    let call = contract.sendMessage(recipient.into(), config.clone().message_data.into());
     let pending_tx = call.from(sender.0.into());
     let pending_tx = pending_tx.send().await?;
     let receipt = pending_tx.get_receipt().await?;
@@ -68,8 +71,10 @@ async fn main() -> Result<()> {
             .unwrap(),
     );
 
-    let sent_message = avail_rust::avail_core::data_proof::AddressedMessage {
-        message: avail_rust::avail_core::data_proof::message::Message::ArbitraryMessage(BoundedData::truncate_from(config.message_data.as_bytes().to_vec())),
+    let sent_message = AddressedMessage {
+        message: avail_rust::avail_core::data_proof::Message::ArbitraryMessage(
+            config.message_data.as_bytes().to_vec().try_into().unwrap(),
+        ),
         from: address_to_h256(sender),
         to: H256(recipient),
         origin_domain: 2,
@@ -89,10 +94,10 @@ async fn main() -> Result<()> {
             "{}/beacon/slot/{}",
             config.bridge_api_url, ethereum_slot_info.slot
         ))
-            .await
-            .unwrap()
-            .json()
-            .await?;
+        .await
+        .unwrap()
+        .json()
+        .await?;
         println!("Slot to num: {}", block_info.block_number);
         if block_info.block_number >= block_number {
             println!("Stored eth head is in range!");
@@ -106,11 +111,11 @@ async fn main() -> Result<()> {
         "{}/avl/proof/{:?}/{}",
         config.bridge_api_url, avail_stored_block_hash, message_id
     ))
-        .await
-        .expect("Cannot get account/storage proofs.")
-        .json()
-        .await
-        .expect("Cannot deserialize");
+    .await
+    .expect("Cannot get account/storage proofs.")
+    .json()
+    .await
+    .expect("Cannot deserialize");
     println!("Got proof! {account_storage_proof:?}");
 
     let acc_proof = BoundedVec(
@@ -157,26 +162,6 @@ async fn main() -> Result<()> {
     };
 
     println!("Finalized block hash: {:?}", tx_in_block.block_hash());
-
-
-    // let tx = avail_subxt::api::tx().vector().execute(
-    //     avail_stored_slot,
-    //     convert_addressed_message(sent_message),
-    //     acc_proof,
-    //     stor_proof,
-    // );
-    //
-    // let client = avail_subxt::AvailClient::new(avail_rpc_url).await.unwrap();
-    //
-    // let executed_block_hash = client
-    //     .tx()
-    //     .sign_and_submit_then_watch_default(&tx, &avail_signer)
-    //     .await?
-    //     .wait_for_finalized_success()
-    //     .await?
-    //     .block_hash();
-    //
-    // println!("Executed at block: {executed_block_hash:?}");
 
     Ok(())
 }
