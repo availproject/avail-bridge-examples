@@ -3,16 +3,15 @@ use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
-use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address};
-use avail_core::data_proof::AddressedMessage;
-use avail_subxt::{AvailConfig, BoundedVec};
+use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address, Config};
+use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
+use avail_rust::avail_core::data_proof::AddressedMessage;
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, WaitFor, SDK};
+use avail_rust::{subxt_signer::SecretUri, Keypair};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use sp_core::H256;
-use std::time::Duration;
-use subxt::ext::sp_core::sr25519::Pair;
-use subxt::ext::sp_core::Pair as PairT;
-use subxt::tx::PairSigner;
+use std::{fs, str::FromStr, time::Duration};
 
 sol!(
     #[sol(rpc)]
@@ -22,28 +21,26 @@ sol!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let avail_rpc_url = "wss://rpc-hex-devnet.avail.tools:443/ws";
-    let avail_sender_mnemonic =
-        "bottom drive obey lake curtain smoke basket hold race lonely fit walk//Alice";
-    let ethereum_secret = "YOUR_SECRET_SEED";
-    let bridge_api_url = "https://hex-bridge-api.sandbox.avail.tools";
-    let ethereum_url = "https://ethereum-sepolia.publicnode.com";
-    let contract_address = "1369A4C9391cF90D393b40fAeAD521b0F7019dc5";
-    let sender = PairT::from_string_with_seed(avail_sender_mnemonic, None).unwrap();
-    let avail_signer = PairSigner::<AvailConfig, Pair>::new(sender.clone().0);
+    let content = fs::read_to_string("./config.toml").expect("Read config.toml");
+    let config = toml::from_str::<Config>(&content).unwrap();
 
-    let recipient = sender.0.public().0;
+    let secret_uri =
+        SecretUri::from_str(config.avail_sender_mnemonic.as_str()).expect("Valid secret URI");
+    let account = Keypair::from_uri(&secret_uri).expect("Valid secret URI");
+    let recipient = account.public_key().0;
     let amount: u128 = 100000;
 
-    let ethereum_signer = ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
+    let ethereum_signer = config
+        .ethereum_secret
+        .parse::<alloy_signer_local::PrivateKeySigner>()?;
 
-    let sender = eth_seed_to_address(ethereum_secret);
+    let sender = eth_seed_to_address(config.ethereum_secret.as_str());
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .wallet(EthereumWallet::from(ethereum_signer))
-        .on_http(Url::parse(ethereum_url)?);
+        .on_http(Url::parse(config.ethereum_url.as_str())?);
 
-    let contract_addr: Address = contract_address.parse()?;
+    let contract_addr: Address = config.contract_address.parse()?;
 
     let contract = AvailBridgeContract::new(contract_addr, &provider);
 
@@ -68,7 +65,7 @@ async fn main() -> Result<()> {
     );
 
     let sent_message = AddressedMessage {
-        message: avail_core::data_proof::Message::FungibleToken {
+        message: avail_rust::avail_core::data_proof::Message::FungibleToken {
             asset_id: H256::zero(),
             amount,
         },
@@ -81,7 +78,7 @@ async fn main() -> Result<()> {
 
     let (avail_stored_block_hash, avail_stored_slot) = loop {
         let ethereum_slot_info: EthereumSlotInfo =
-            reqwest::get(format!("{}/eth/head", bridge_api_url))
+            reqwest::get(format!("{}/eth/head", config.bridge_api_url))
                 .await
                 .unwrap()
                 .json()
@@ -89,7 +86,7 @@ async fn main() -> Result<()> {
         println!("New slot: {ethereum_slot_info:?}");
         let block_info: BlockInfo = reqwest::get(format!(
             "{}/beacon/slot/{}",
-            bridge_api_url, ethereum_slot_info.slot
+            config.bridge_api_url, ethereum_slot_info.slot
         ))
         .await
         .unwrap()
@@ -106,7 +103,7 @@ async fn main() -> Result<()> {
 
     let account_storage_proof: AccountStorageProof = reqwest::get(format!(
         "{}/avl/proof/{:?}/{}",
-        bridge_api_url, avail_stored_block_hash, message_id
+        config.bridge_api_url, avail_stored_block_hash, message_id
     ))
     .await
     .expect("Cannot get account/storage proofs.")
@@ -132,24 +129,33 @@ async fn main() -> Result<()> {
 
     println!("Message: {sent_message:?}");
 
-    let tx = avail_subxt::api::tx().vector().execute(
+    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
+    let da_call = avail::tx().vector().execute(
         avail_stored_slot,
         convert_addressed_message(sent_message),
         acc_proof,
         stor_proof,
     );
-
-    let client = avail_subxt::AvailClient::new(avail_rpc_url).await.unwrap();
-
-    let executed_block_hash = client
+    let params = AvailExtrinsicParamsBuilder::new().build();
+    let maybe_tx_progress = sdk
+        .api
         .tx()
-        .sign_and_submit_then_watch_default(&tx, &avail_signer)
-        .await?
-        .wait_for_finalized_success()
-        .await?
-        .block_hash();
+        .sign_and_submit_then_watch(&da_call, &account, params)
+        .await;
 
-    println!("Executed at block: {executed_block_hash:?}");
+    let transaction = sdk
+        .util
+        .progress_transaction(maybe_tx_progress, WaitFor::BlockFinalization)
+        .await;
+
+    let tx_in_block = match transaction {
+        Ok(tx_in_block) => tx_in_block,
+        Err(message) => {
+            panic!("Error: {}", message);
+        }
+    };
+
+    println!("Executed at block: {:?}", tx_in_block.block_hash());
 
     Ok(())
 }

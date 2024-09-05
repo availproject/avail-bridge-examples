@@ -3,10 +3,10 @@ use alloy::primitives::Bytes;
 use alloy::primitives::FixedBytes;
 use alloy::primitives::Uint;
 use alloy_sol_types::sol;
-use avail_core::data_proof::AddressedMessage as CoreAddressedMessage;
-use avail_subxt::api::runtime_types::avail_core::data_proof::message::AddressedMessage;
-use avail_subxt::api::runtime_types::avail_core::data_proof::message::Message as AvailBridgeMessage;
-use avail_subxt::BoundedVec;
+use avail_rust::avail::runtime_types::avail_core::data_proof::message::AddressedMessage;
+use avail_rust::avail::runtime_types::avail_core::data_proof::message::Message as AvailBridgeMessage;
+use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
+use avail_rust::avail_core::data_proof::AddressedMessage as CoreAddressedMessage;
 use serde::Deserialize;
 use sp_core::H256;
 
@@ -20,10 +20,10 @@ sol!(
 
 pub fn convert_addressed_message(message: CoreAddressedMessage) -> AddressedMessage {
     let msg = match message.message {
-        avail_core::data_proof::Message::ArbitraryMessage(data) => {
+        avail_rust::avail_core::data_proof::Message::ArbitraryMessage(data) => {
             AvailBridgeMessage::ArbitraryMessage(BoundedVec(data.to_vec()))
         }
-        avail_core::data_proof::Message::FungibleToken { asset_id, amount } => {
+        avail_rust::avail_core::data_proof::Message::FungibleToken { asset_id, amount } => {
             AvailBridgeMessage::FungibleToken { asset_id, amount }
         }
     };
@@ -83,8 +83,10 @@ impl TryFrom<BridgeApiMerkleProof> for AvailBridgeContract::Message {
             return Err("Message not found");
         };
         let (msg_type, data) = match message.message {
-            avail_core::data_proof::Message::ArbitraryMessage(data) => (1u8, data.to_vec()),
-            avail_core::data_proof::Message::FungibleToken {
+            avail_rust::avail_core::data_proof::Message::ArbitraryMessage(data) => {
+                (1u8, data.to_vec())
+            }
+            avail_rust::avail_core::data_proof::Message::FungibleToken {
                 asset_id: _,
                 amount,
             } => (2u8, enc_amount_to_value(amount)),
@@ -122,4 +124,18 @@ impl From<BridgeApiMerkleProof> for AvailBridgeContract::MerkleProofInput {
             leafIndex: Uint::from(value.leaf_index),
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Config {
+    pub avail_rpc_url: String,
+    pub avail_sender_mnemonic: String,
+    pub ethereum_secret: String,
+    pub bridge_api_url: String,
+    pub ethereum_url: String,
+    pub contract_address: String,
+    pub message_data: String,
+    pub amount_to_send: u64,
+    pub recipient: String,
+    pub receive_message_contract_address: String,
 }

@@ -1,0 +1,10 @@
+avail_rpc_url="wss://turing-rpc.avail.so:443/ws"
+avail_sender_mnemonic="<MNEMONIC_SEED>"
+ethereum_secret="<WALLET_PRIVATE_KEY>"
+bridge_api_url="https://turing-bridge-api.fra.avail.so"
+ethereum_url="https://ethereum-sepolia.publicnode.com"
+contract_address="967F7DdC4ec508462231849AE81eeaa68Ad01389"
+message_data="Example data to send"
+amount_to_send=1000000
+recipient="AfF84d35f9c784cE972A7Ff3e3E243E5eb6EF37D000000000000000000000000"
+receive_message_contract_address="29190B4d80C409A3DaF743F57379e0453D31C26b"
