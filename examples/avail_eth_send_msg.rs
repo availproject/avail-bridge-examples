@@ -1,16 +1,15 @@
-use std::fs;
-use std::str::FromStr;
 use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
 use anyhow::{Context, Result};
 use avail_bridge_tools::{address_to_h256, AvailBridgeContract, BridgeApiMerkleProof, Config};
-use reqwest::Url;
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, H256, SDK};
 use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
 use avail_rust::avail::vector::calls::types::send_message::Message;
-
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, H256, SDK};
+use reqwest::Url;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::str::FromStr;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,11 +31,9 @@ async fn main() -> Result<()> {
     // Arbitrary message to send
     let message = Message::ArbitraryMessage(data);
 
-    let da_call = avail::tx().vector().send_message(
-        message,
-        recipient,
-        domain,
-    );
+    let da_call = avail::tx()
+        .vector()
+        .send_message(message, recipient, domain);
     let params = AvailExtrinsicParamsBuilder::new().build();
     let maybe_tx_progress = sdk
         .api
@@ -63,19 +60,16 @@ async fn main() -> Result<()> {
     let block_hash = tx_in_block.block_hash();
     let extrinsic_index = events.extrinsic_index();
 
-    let block = sdk
-        .rpc
-        .chain
-        .get_block(None)
-        .await.unwrap();
+    let block = sdk.rpc.chain.get_block(None).await.unwrap();
 
     let block_num = block.block.header.number;
     loop {
-        let avail_head_info: AvailHeadInfo = reqwest::get(format!("{}/avl/head", config.bridge_api_url))
-            .await
-            .unwrap()
-            .json()
-            .await?;
+        let avail_head_info: AvailHeadInfo =
+            reqwest::get(format!("{}/avl/head", config.bridge_api_url))
+                .await
+                .unwrap()
+                .json()
+                .await?;
         println!("New range: {avail_head_info:?}");
 
         if (avail_head_info.data.start..=avail_head_info.data.end).contains(&(block_num as u64)) {
@@ -93,7 +87,9 @@ async fn main() -> Result<()> {
     let proof: BridgeApiMerkleProof = reqwest::get(url).await.unwrap().json().await.unwrap();
 
     println!("Proof: {proof:?}");
-    let signer = config.ethereum_secret.parse::<alloy_signer_local::PrivateKeySigner>()?;
+    let signer = config
+        .ethereum_secret
+        .parse::<alloy_signer_local::PrivateKeySigner>()?;
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
         .wallet(EthereumWallet::from(signer))
