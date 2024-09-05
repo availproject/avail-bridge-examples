@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address, Config};
 use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
 use avail_rust::avail_core::data_proof::AddressedMessage;
-use avail_rust::SDK;
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, WaitFor, SDK};
 use avail_rust::{subxt_signer::SecretUri, Keypair};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
@@ -129,26 +129,33 @@ async fn main() -> Result<()> {
 
     println!("Message: {sent_message:?}");
 
-    let tx = avail_rust::avail::tx().vector().execute(
+    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
+    let da_call = avail::tx().vector().execute(
         avail_stored_slot,
         convert_addressed_message(sent_message),
         acc_proof,
         stor_proof,
     );
-
-    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
-
-    let tx_status = sdk
+    let params = AvailExtrinsicParamsBuilder::new().build();
+    let maybe_tx_progress = sdk
         .api
         .tx()
-        .sign_and_submit_then_watch_default(&tx, &account)
-        .await?
-        .wait_for_finalized()
-        .await?;
-    let executed_block_hash = tx_status.block_hash();
-    let _ = tx_status.wait_for_success().await?;
+        .sign_and_submit_then_watch(&da_call, &account, params)
+        .await;
 
-    println!("Executed at block: {executed_block_hash:?}");
+    let transaction = sdk
+        .util
+        .progress_transaction(maybe_tx_progress, WaitFor::BlockFinalization)
+        .await;
+
+    let tx_in_block = match transaction {
+        Ok(tx_in_block) => tx_in_block,
+        Err(message) => {
+            panic!("Error: {}", message);
+        }
+    };
+
+    println!("Executed at block: {:?}", tx_in_block.block_hash());
 
     Ok(())
 }
