@@ -1,10 +1,10 @@
 use alloy_network::EthereumWallet;
 use alloy_provider::ProviderBuilder;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use avail_bridge_tools::{address_to_h256, AvailBridgeContract, BridgeApiMerkleProof, Config};
 use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
 use avail_rust::avail::vector::calls::types::send_message::Message;
-use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, H256, SDK};
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, SDK};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -14,13 +14,16 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<()> {
     let content = fs::read_to_string("./config.toml").expect("Read config.toml");
-    let config = toml::from_str::<Config>(&content).unwrap();
+    let config = toml::from_str::<Config>(&content).expect("Parse config.toml");
 
     println!("Using config:\n{:#?}", config);
 
-    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
-    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
-    let account = Keypair::from_uri(&secret_uri).unwrap();
+    let sdk = SDK::new(config.avail_rpc_url.as_str())
+        .await
+        .expect("Initializing SDK");
+    let secret_uri =
+        SecretUri::from_str(config.avail_sender_mnemonic.as_str()).expect("Valid secret URI");
+    let account = Keypair::from_uri(&secret_uri).expect("Valid secret URI");
 
     // Ethereum domain
     let domain = 2u32;
@@ -54,13 +57,21 @@ async fn main() -> Result<()> {
     };
 
     println!("Finalized block hash: {:?}", tx_in_block.block_hash());
-    let events = tx_in_block.wait_for_success().await.unwrap();
+    let events = tx_in_block
+        .wait_for_success()
+        .await
+        .expect("Waiting for success");
     println!("Transaction result: {:?}", events);
 
     let block_hash = tx_in_block.block_hash();
     let extrinsic_index = events.extrinsic_index();
 
-    let block = sdk.rpc.chain.get_block(None).await.unwrap();
+    let block = sdk
+        .rpc
+        .chain
+        .get_block(None)
+        .await
+        .expect("Get block by hash");
 
     let block_num = block.block.header.number;
     loop {

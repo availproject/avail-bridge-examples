@@ -23,10 +23,11 @@ sol!(
 #[tokio::main]
 async fn main() -> Result<()> {
     let content = fs::read_to_string("./config.toml").expect("Read config.toml");
-    let config = toml::from_str::<Config>(&content).unwrap();
+    let config = toml::from_str::<Config>(&content).expect("Parse config.toml");
 
-    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
-    let account = Keypair::from_uri(&secret_uri).unwrap();
+    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str())
+        .expect("parse avail sender mnemonic");
+    let account = Keypair::from_uri(&secret_uri).expect("create keypair");
 
     let recipient = account.public_key().0;
 
@@ -127,7 +128,9 @@ async fn main() -> Result<()> {
     );
 
     println!("Message: {sent_message:?}");
-    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
+    let sdk = SDK::new(config.avail_rpc_url.as_str())
+        .await
+        .expect("create sdk");
 
     let da_call = avail::tx().vector().execute(
         avail_stored_slot,

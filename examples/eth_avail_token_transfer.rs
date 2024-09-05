@@ -24,8 +24,9 @@ async fn main() -> Result<()> {
     let content = fs::read_to_string("./config.toml").expect("Read config.toml");
     let config = toml::from_str::<Config>(&content).unwrap();
 
-    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
-    let account = Keypair::from_uri(&secret_uri).unwrap();
+    let secret_uri =
+        SecretUri::from_str(config.avail_sender_mnemonic.as_str()).expect("Valid secret URI");
+    let account = Keypair::from_uri(&secret_uri).expect("Valid secret URI");
     let recipient = account.public_key().0;
     let amount: u128 = 100000;
 

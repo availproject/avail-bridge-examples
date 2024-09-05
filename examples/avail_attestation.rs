@@ -12,13 +12,16 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<()> {
     let content = fs::read_to_string("./config.toml").expect("Read config.toml");
-    let config = toml::from_str::<Config>(&content).unwrap();
+    let config = toml::from_str::<Config>(&content).expect("Parse config.toml");
 
     println!("Using config:\n{:#?}", config);
 
-    let sdk = SDK::new(config.avail_rpc_url.as_str()).await.unwrap();
-    let secret_uri = SecretUri::from_str(config.avail_sender_mnemonic.as_str()).unwrap();
-    let account = Keypair::from_uri(&secret_uri).unwrap();
+    let sdk = SDK::new(config.avail_rpc_url.as_str())
+        .await
+        .expect("Init SDK");
+    let secret_uri =
+        SecretUri::from_str(config.avail_sender_mnemonic.as_str()).expect("Valid secret URI");
+    let account = Keypair::from_uri(&secret_uri).expect("Valid secret URI");
     let data = Data {
         0: config.message_data.as_bytes().to_vec(),
     };
@@ -44,13 +47,16 @@ async fn main() -> Result<()> {
     };
 
     println!("Finalized block hash: {:?}", tx_in_block.block_hash());
-    let events = tx_in_block.wait_for_success().await.unwrap();
+    let events = tx_in_block
+        .wait_for_success()
+        .await
+        .expect("Waiting for success");
     println!("Transaction result: {:?}", events);
 
     let block_hash = tx_in_block.block_hash();
     let extrinsic_index = events.extrinsic_index();
 
-    let block = sdk.rpc.chain.get_block(None).await.unwrap();
+    let block = sdk.rpc.chain.get_block(None).await.expect("get block hash");
 
     let block_num = block.block.header.number;
 
