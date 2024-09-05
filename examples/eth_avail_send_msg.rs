@@ -6,14 +6,7 @@ use anyhow::{anyhow, Result};
 use avail_bridge_tools::{address_to_h256, convert_addressed_message, eth_seed_to_address, Config};
 use avail_rust::avail::runtime_types::bounded_collections::bounded_vec::BoundedVec;
 use avail_rust::avail_core::data_proof::AddressedMessage;
-use avail_rust::sp_core::sr25519::Pair;
-use avail_rust::sp_core::Pair as PairT;
-use avail_rust::subxt::runtime_api::Payload;
-use avail_rust::subxt_signer::{
-    bip39::{Language, Mnemonic},
-    SecretString, SecretUri,
-};
-use avail_rust::{avail, AvailConfig, AvailExtrinsicParamsBuilder, Keypair, WaitFor, SDK};
+use avail_rust::{avail, AvailExtrinsicParamsBuilder, Keypair, SecretUri, WaitFor, SDK};
 use reqwest::Url;
 use serde::{Deserialize, Deserializer};
 use sp_core::H256;
@@ -98,7 +91,7 @@ async fn main() -> Result<()> {
         .unwrap()
         .json()
         .await?;
-        println!("Slot to num: {}", block_info.block_number);
+        println!("Slot to block number: {}", block_info.block_number);
         if block_info.block_number >= block_number {
             println!("Stored eth head is in range!");
             break (block_info.block_hash, ethereum_slot_info.slot);
